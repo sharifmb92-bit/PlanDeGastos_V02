@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan Mensual de Gastos</title>
+    
+    <!-- Configuración PWA Nativa -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23707070'><text y='75' font-size='70' x='15'>🏦</text></svg>">
+    
+    <style>
+        :root {
+            /* Paleta solicitada: Gris, Verde y Naranja */
+            --bg-color: #121212;
+            --card-bg-dark: #1e1e1e;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+            
+            /* Colores de los paneles principales */
+            --panel-verde: #1b4d3e;       /* Verde elegante para Equilibrio/Básicos/Ingresos */
+            --panel-naranja: #cc5a01;     /* Naranja para Variable/Bolsas/Gastos */
+            --panel-gris: #2a2a2a;        /* Gris para contraste y Ahorros */
+            
+            /* Código de gris personalizado de acento */
+            --gris-acento: #707070; 
+            
+            --btn-blue: #2d2d2d;
+            --border-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 24px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Botón de instalación PWA superior */
+        #pwa-install-btn {
+            display: none;
+            background-color: var(--gris-acento);
+            color: white;
+            border: 1px solid var(--border-color);
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 1100px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .app-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            width: 100%;
+            max-width: 1100px;
+            margin-bottom: 24px;
+        }
+
+        .app-icon-header {
+            font-size: 38px;
+            background-color: var(--card-bg-dark);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .app-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* Dashboard de 3 Columnas */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.2fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            border-radius: 18px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* COLUMNA 1: EQUILIBRIO GLOBAL (GRIS) */
+        .panel-equilibrium { background-color: var(--panel-gris); }
+
+        .chart-container {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin: 10px auto 30px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .svg-chart { transform: rotate(-90deg); width: 100%; height: 100%; }
+        .chart-bg { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 14; }
+        .chart-progress {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 14;
+            stroke-linecap: round;
+            stroke-dasharray: 440;
+            stroke-dashoffset: 440;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .chart-legends {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9);
+            position: absolute;
+            top: 38px;
+            left: 32px;
+        }
+        
+        .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .panel-amount-display { font-size: 32px; font-weight: 700; margin-top: auto; letter-spacing: -0.5px; }
+
+        /* COLUMNA 2: NECESIDADES BÁSICAS (VERDE) */
+        .panel-basics { background-color: var(--panel-verde); }
+        .basics-budget-indicator { font-size: 13px; color: rgba(255,255,255,0.8); margin-bottom: 4px; }
+        .basics-progress-bar-container { background-color: rgba(0,0,0,0.4); height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 24px; border: 1px solid var(--border-color); }
+        .basics-progress-fill { background-color: var(--panel-naranja); height: 100%; width: 0%; border-radius: 6px; transition: width 0.4s ease; }
+        
+        .checklist-group { display: flex; flex-direction: column; gap: 14px; }
+        .checklist-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .checklist-row:last-child { border-bottom: none; }
+        .checklist-left { display: flex; align-items: center; gap: 14px; }
+        .check-box-square { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.5); border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+        .checklist-label { font-size: 16px; font-weight: 500; }
+        .check-circle-status { width: 22px; height: 22px; border-radius: 50%; background-color: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; color: transparent; font-size: 12px; font-weight: bold; }
+        .check-circle-status.active { background-color: var(--text-main); border-color: var(--text-main); color: var(--bg-color); }
+
+        /* COLUMNA 3: DINERO VARIABLE (NARANJA) */
+        .panel-variable { background-color: var(--panel-naranja); }
+        .bars-chart-mock { display: flex; align-items: flex-end; gap: 16px; height: 100px; margin-bottom: 20px; border-left: 2px solid rgba(255,255,255,0.3); border-bottom: 2px solid rgba(255,255,255,0.3); padding: 0 10px 4px 10px; position: relative; }
+        .bar-y-label { position: absolute; left: -25px; font-size: 10px; color: rgba(255,255,255,0.6); }
+        .bar { flex: 1; border-radius: 4px 4px 0 0; transition: height 0.3s ease; }
+        .bar-style-vida { background-color: var(--panel-verde); height: 0%; }
+        .bar-ahorro { background-color: var(--panel-gris); height: 0%; border: 1px solid rgba(255,255,255,0.2); }
+        .bars-labels { display: flex; justify-content: space-around; font-size: 11px; color: rgba(255,255,255,0.9); margin-bottom: 20px; }
+        
+        .variable-summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+        .v-box-title { font-size: 12px; color: rgba(255,255,255,0.8); margin-bottom: 4px; }
+        .v-box-value { font-size: 16px; font-weight: 700; word-break: break-all; }
+        
+        .recent-section-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 14px; color: white; }
+        .recent-list { display: flex; flex-direction: column; gap: 8px; max-height: 140px; overflow-y: auto; font-size: 13px; }
+        .recent-item { display: flex; justify-content: space-between; align-items: center; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); }
+        .tag-tipo { font-size: 9px; text-transform: uppercase; padding: 2px 5px; border-radius: 4px; font-weight: bold; margin-right: 6px; }
+        .tag-ingreso { background: var(--panel-verde); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+        .tag-gasto { background: var(--panel-naranja); color: #fff; }
+        .tag-ahorro { background: var(--gris-acento); color: #fff; border: 1px solid #444; }
+        .delete-btn { color: white; font-weight: bold; background: none; border: none; cursor: pointer; padding: 2px 6px; font-size: 16px; margin-left: 10px; }
+
+        /* SECCIÓN INFERIOR: CONTROLES, FORMULARIOS Y CONFIGURACIÓN */
+        .bottom-container {
+            width: 100%;
+            max-width: 1100px;
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Bloque con los tres formularios dedicados */
+        .forms-inputs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 900px) {
+            .forms-inputs-grid { grid-template-columns: 1fr; }
+        }
+
+        .action-card-input {
+            background-color: var(--card-bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .action-card-input.border-gasto { border-top: 4px solid var(--panel-naranja); }
+        .action-card-input.border-ingreso { border-top: 4px solid var(--panel-verde); }
+        .action-card-input.border-ahorro { border-top: 4px solid var(--gris-acento); }
+
+        .form-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .input-fields-row { display: flex; gap: 8px; width: 100%; }
+
+        input.large-input {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            width: 100%;
+            outline: none;
+        }
+        input.large-input:focus { border-color: var(--gris-acento); }
+        input.large-input::placeholder { color: #555555; }
+
+        .submit-btn-wide {
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn-gasto { background-color: var(--panel-naranja); }
+        .btn-ingreso { background-color: var(--panel-verde); }
+        .btn-ahorro { background-color: var(--gris-acento); }
+
+        /* Utilidades y Ajustes */
+        .menu-utils-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            background-color: var(--card-bg-dark);
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        @media (max-width: 600px) {
+            .menu-utils-row { flex-direction: column; width: 100%; }
+            .menu-utils-row button { width: 100%; }
+        }
+
+        .btn-menu-rect { background-color: var(--btn-blue); color: white; border: 1px solid var(--border-color); padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .backup-group { display: flex; gap: 10px; }
+        .btn-backup-small { background-color: var(--btn-blue); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; color: white; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+
+        /* VENTANA CONFIGURACIÓN (MODAL) */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal-content {
+            background-color: var(--card-bg-dark);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .modal-content h2 { font-size: 20px; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .modal-form-group { display: flex; flex-direction: column; gap: 6px; }
+        .modal-form-group label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+        .modal-actions { display: flex; gap: 12px; margin-top: 10px; }
+        .btn-modal { flex: 1; padding: 14px; border-radius: 8px; font-weight: 700; border: none; cursor: pointer; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <button id="pwa-install-btn">📱 Instalar Presupuesto en Pantalla de Inicio</button>
+
+    <header class="app-header">
+        <div class="app-icon-header">🏦</div>
+        <h1>Plan Mensual de Gastos</h1>
+    </header>
+
+    <main class="dashboard-grid">
+        
+        <!-- COLUMNA 1: EQUILIBRIO GLOBAL (GRIS) -->
+        <section class="panel panel-equilibrium">
+            <div class="panel-title">Equilibrio Global</div>
+            
+            <div class="chart-container">
+                <svg class="svg-chart" viewBox="0 0 160 160">
+                    <circle class="chart-bg" cx="80" cy="80" r="70"></circle>
+                    <circle id="global-circle-progress" class="chart-progress" cx="80" cy="80" r="70"></circle>
+                </svg>
+                <div class="chart-legends">
+                    <div><span class="legend-dot" style="background-color: #fff;"></span>Base</div>
+                    <div><span class="legend-dot" style="background-color: var(--panel-verde);"></span>Extras</div>
+                    <div><span class="legend-dot" style="background-color: var(--panel-naranja);"></span>Bolsas</div>
+                </div>
+            </div>
+
+            <div class="v-box-title" style="color: rgba(255,255,255,0.8);">Monto Disponible Real</div>
+            <div class="panel-amount-display" id="display-global-balance">0.00 €</div>
+        </section>
+
+        <!-- COLUMNA 2: NECESIDADES BÁSICAS (VERDE) -->
+        <section class="panel panel-basics">
+            <div class="panel-title">Necesidades Básicas (50%)</div>
+            <div class="basics-budget-indicator" id="basics-ratio-text">Cargando...</div>
+            <div class="basics-progress-bar-container">
+                <div class="basics-progress-fill" id="basics-bar-fill"></div>
+            </div>
+            <div class="checklist-group" id="basics-checklist-container"></div>
+        </section>
+
+        <!-- COLUMNA 3: DINERO VARIABLE (NARANJA) -->
+        <section class="panel panel-variable">
+            <div class="panel-title">Distribución Dinámica</div>
+            <div class="bars-chart-mock">
+                <div class="bar-y-label" style="top: 10px;">Max</div>
+                <div class="bar-y-label" style="top: 50px;">Med</div>
+                <div class="bar-y-label" style="bottom: 0;">0</div>
+                <div class="bar bar-style-vida" id="bar-gasto-dinamico" title="Gasto real consumido"></div>
+                <div class="bar bar-ahorro" id="bar-ahorro-dinamico" title="Porcentaje acumulado"></div>
+            </div>
+            <div class="bars-labels"><span>Gasto Var.</span><span>Ahorros Total</span></div>
+
+            <div class="variable-summary-row">
+                <div>
+                    <div class="v-box-title">Límit. Variable (30%)</div>
+                    <div class="v-box-value" id="display-variable-left">0.00 €</div>
+                </div>
+                <div>
+                    <div class="v-box-title">Bolsa Ahorro (20% + Ext)</div>
+                    <div class="v-box-value" id="display-saving-value">0.00 €</div>
+                </div>
+            </div>
+
+            <div class="recent-section-title">Historial Reciente (Flujo de Caja)</div>
+            <div class="recent-list" id="recent-expenses-log"></div>
+        </section>
+
+    </main>
+
+    <!-- SECCIÓN INFERIOR CON LOS TRES APARTADOS DIRECTOS -->
+    <div class="bottom-container">
+        
+        <div class="forms-inputs-grid">
+            
+            <!-- APARTADO 1: APUNTAR GASTO VARIABLE -->
+            <form class="action-card-input border-gasto" id="form-add-gasto">
+                <div class="form-section-title"><span>🟠</span> Nuevo Gasto Variable</div>
+                <div class="input-fields-row">
+                    <input type="number" id="gasto-amount" class="large-input" placeholder="0.00 €" step="0.01" required inputmode="decimal">
+                    <input type="text" id="gasto-desc" class="large-input" placeholder="Concepto..." required>
+                </div>
+                <button type="submit" class="submit-btn-wide btn-gasto">Guardar Gasto</button>
+            </form>
+
+            <!-- APARTADO 2: APUNTAR INGRESO EXTRA -->
+            <form class="action-card-input border-ingreso" id="form-add-ingreso">
+                <div class="form-section-title"><span>🟢</span> Nuevo Ingreso Extra</div>
+                <div class="input-fields-row">
+                    <input type="number" id="ingreso-amount" class="large-input" placeholder="0.00 €" step="0.01" required inputmode="decimal">
+                    <input type="text" id="ingreso-desc" class="large-input" placeholder="Origen..." required>
+                </div>
+                <button type="submit" class="submit-btn-wide btn-ingreso">Guardar Ingreso</button>
+            </form>
+
+            <!-- APARTADO 3: APUNTAR ASIGNACIÓN A AHORRO -->
+            <form class="action-card-input border-ahorro" id="form-add-ahorro">
+                <div class="form-section-title"><span>⚫</span> Mover a Bolsa Ahorro</div>
+                <div class="input-fields-row">
+                    <input type="number" id="ahorro-amount" class="large-input" placeholder="0.00 €" step="0.01" required inputmode="decimal">
+                    <input type="text" id="ahorro-desc" class="large-input" placeholder="Motivo..." required>
+                </div>
+                <button type="submit" class="submit-btn-wide btn-ahorro">Guardar Ahorro</button>
+            </form>
+
+        </div>
+
+        <!-- Fila de Utilidades Básicas -->
+        <div class="menu-utils-row">
+            <button class="btn-menu-rect" onclick="abrirAjustes()">Ajustes Presupuesto Base</button>
+            
+            <div class="backup-group">
+                <button class="btn-backup-small" onclick="importarDatos()">Importar 📁</button>
+                <button class="btn-backup-small" onclick="exportarDatos()">Exportar 📥</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- VENTANA CONFIGURACIÓN (MODAL) -->
+    <div class="modal-overlay" id="ajustes-modal">
+        <div class="modal-content">
+            <h2>Configuración del Plan Base</h2>
+            
+            <div class="modal-form-group">
+                <label>Nómina Fija Principal Mensual Total (€)</label>
+                <input type="number" id="cfg-total-budget" class="large-input" step="0.01">
+            </div>
+            <div class="modal-form-group"><label>Gasto Fijo: Alquiler / Hipoteca (€)</label><input type="number" id="cfg-f1" class="large-input"></div>
+            <div class="modal-form-group"><label>Gasto Fijo: Suministros (Luz, agua...) (€)</label><input type="number" id="cfg-f2" class="large-input"></div>
+            <div class="modal-form-group"><label>Gasto Fijo: Despensa / Comida (€)</label><input type="number" id="cfg-f3" class="large-input"></div>
+            <div class="modal-form-group"><label>Gasto Fijo: Suscripciones / Esenciales (€)</label><input type="number" id="cfg-f4" class="large-input"></div>
+
+            <div class="modal-actions">
+                <button class="btn-modal" style="background:#444444; color:white;" onclick="cerrarAjustes()">Cancelar</button>
+                <button class="btn-modal" style="background:var(--text-main); color:var(--bg-color);" onclick="guardarAjustes()">Guardar Ajustes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let appData = {
+            config: {
+                presupuestoBase: 2500,
+                fijoAlquiler: 650,
+                fijoSuministros: 150,
+                fijoDespensa: 350,
+                fijoSuscrip: 40
+            },
+            fijosPagados: [],
+            historialDinamico: []
+        };
+
+        function cargarPersistencia() {
+            const guardado = localStorage.getItem('pwa_plan_gastos_v8_completo');
+            if (guardado) {
+                try { appData = JSON.parse(guardado); } catch(e) {}
+            }
+            calcularYRenderizar();
+        }
+
+        function guardarDatos() {
+            localStorage.setItem('pwa_plan_gastos_v8_completo', JSON.stringify(appData));
+            calcularYRenderizar();
+        }
+
+        // Manejadores de los 3 formularios dedicados
+        document.getElementById('form-add-gasto').addEventListener('submit', function(e) {
+            e.preventDefault();
+            procesarTransaccion('gasto', 'gasto-amount', 'gasto-desc');
+        });
+
+        document.getElementById('form-add-ingreso').addEventListener('submit', function(e) {
+            e.preventDefault();
+            procesarTransaccion('ingreso', 'ingreso-amount', 'ingreso-desc');
+        });
+
+        document.getElementById('form-add-ahorro').addEventListener('submit', function(e) {
+            e.preventDefault();
+            procesarTransaccion('ahorro', 'ahorro-amount', 'ahorro-desc');
+        });
+
+        function procesarTransaccion(tipo, idMonto, idDesc) {
+            const amtIn = document.getElementById(idMonto);
+            const descIn = document.getElementById(idDesc);
+            const valor = parseFloat(amtIn.value);
+            const texto = descIn.value.trim();
+
+            if (!isNaN(valor) && texto && valor > 0) {
+                appData.historialDinamico.unshift({
+                    tipo: tipo,
+                    desc: texto,
+                    importe: valor
+                });
+                amtIn.value = '';
+                descIn.value = '';
+                guardarDatos();
+            }
+        }
+
+        function calcularYRenderizar() {
+            const cfg = appData.config;
+            
+            let ingresosTotales = Number(cfg.presupuestoBase);
+            let ahorrosTotalesAsignados = 0;
+            let gastosVariablesConsumidos = 0;
+
+            appData.historialDinamico.forEach(item => {
+                if (item.tipo === 'ingreso') ingresosTotales += item.importe;
+                if (item.tipo === 'gasto') gastosVariablesConsumidos += item.importe;
+                if (item.tipo === 'ahorro') ahorrosTotalesAsignados += item.importe;
+            });
+
+            const maxFijo = ingresosTotales * 0.50;
+            const maxVariable = ingresosTotales * 0.30;
+            const maxAhorroBase = ingresosTotales * 0.20;
+            const ahorroDefinitivo = maxAhorroBase + ahorrosTotalesAsignados;
+
+            const GASTOS_FIJOS_MAP = [
+                { id: 'f1', nombre: 'Alquiler/Hipot.', coste: Number(cfg.fijoAlquiler) },
+                { id: 'f2', nombre: 'Suministros', coste: Number(cfg.fijoSuministros) },
+                { id: 'f3', nombre: 'Despensa', coste: Number(cfg.fijoDespensa) },
+                { id: 'f4', nombre: 'Suscrip. Esenc.', coste: Number(cfg.fijoSuscrip) }
+            ];
+
+            const checklistContainer = document.getElementById('basics-checklist-container');
+            checklistContainer.innerHTML = '';
+            let fijosTotalesConfigurados = 0;
+            let fijosPendientesCobro = 0;
+
+            GASTOS_FIJOS_MAP.forEach(g => {
+                fijosTotalesConfigurados += g.coste;
+                const pagado = appData.fijosPagados.includes(g.id);
+                if (!pagado) fijosPendientesCobro += g.coste;
+
+                const row = document.createElement('div');
+                row.className = 'checklist-row';
+                row.innerHTML = `
+                    <div class="checklist-left">
+                        <div class="check-box-square" style="background-color: ${pagado ? 'var(--panel-naranja)':'transparent'}" onclick="toggleFijo('${g.id}')"></div>
+                        <span class="checklist-label">${g.nombre} (${g.coste.toFixed(2)} €)</span>
+                    </div>
+                    <div class="check-circle-status ${pagado ? 'active' : ''}" onclick="toggleFijo('${g.id}')">✓</div>
+                `;
+                checklistContainer.appendChild(row);
+            });
+
+            document.getElementById('basics-ratio-text').innerText = `Fijos: ${fijosTotalesConfigurados.toFixed(2)} € / Límite (50%): ${maxFijo.toFixed(2)} €`;
+            const pctFijoBar = (fijosTotalesConfigurados / maxFijo) * 100;
+            document.getElementById('basics-bar-fill').style.width = `${Math.min(pctFijoBar, 100)}%`;
+
+            const logContainer = document.getElementById('recent-expenses-log');
+            logContainer.innerHTML = '';
+
+            appData.historialDinamico.forEach((item, index) => {
+                const rowItem = document.createElement('div');
+                rowItem.className = 'recent-item';
+                
+                let badgeStyle = 'tag-gasto';
+                let prefijoSigno = '-';
+                if(item.tipo === 'ingreso') { badgeStyle = 'tag-ingreso'; prefijoSigno = '+'; }
+                if(item.tipo === 'ahorro') { badgeStyle = 'tag-ahorro'; prefijoSigno = '→'; }
+
+                rowItem.innerHTML = `
+                    <div>
+                        <span class="tag-tipo ${badgeStyle}">${item.tipo}</span>
+                        <span>${item.desc}</span>
+                        <span style="font-weight:700; margin-left:8px;">${prefijoSigno}${item.importe.toFixed(2)} €</span>
+                    </div>
+                    <button class="delete-btn" onclick="eliminarItemHistorial(${index})">✕</button>
+                `;
+                logContainer.appendChild(rowItem);
+            });
+
+            const variableRestante = maxVariable - gastosVariablesConsumidos;
+            document.getElementById('display-variable-left').innerText = `${variableRestante.toLocaleString('es-ES', {minimumFractionDigits: 2})} €`;
+            document.getElementById('display-saving-value').innerText = `${ahorroDefinitivo.toLocaleString('es-ES', {minimumFractionDigits: 2})} €`;
+
+            const pctBarGasto = (gastosVariablesConsumidos / maxVariable) * 100;
+            const pctBarAhorro = (ahorroDefinitivo / ingresosTotales) * 100;
+            document.getElementById('bar-gasto-dinamico').style.height = `${Math.min(isNaN(pctBarGasto)?0:pctBarGasto, 100)}%`;
+            document.getElementById('bar-ahorro-dinamico').style.height = `${Math.min(isNaN(pctBarAhorro)?0:pctBarAhorro*3, 100)}%`;
+
+            const disponibleGlobal = fijosPendientesCobro + variableRestante;
+            document.getElementById('display-global-balance').innerText = `${disponibleGlobal.toLocaleString('es-ES', {minimumFractionDigits: 2})} €`;
+
+            const circulo = document.getElementById('global-circle-progress');
+            const totalPresupuestadoEfectivo = maxFijo + maxVariable;
+            const pctGlobal = disponibleGlobal / totalPresupuestadoEfectivo;
+            const strokeOffset = 440 - (440 * (isNaN(pctGlobal) || pctGlobal < 0 ? 0 : pctGlobal > 1 ? 1 : pctGlobal));
+            circulo.style.strokeDashoffset = strokeOffset;
+        }
+
+        window.toggleFijo = function(id) {
+            const idx = appData.fijosPagados.indexOf(id);
+            if (idx > -1) appData.fijosPagados.splice(idx, 1);
+            else appData.fijosPagados.push(id);
+            guardarDatos();
+        };
+
+        window.eliminarItemHistorial = function(index) {
+            if(confirm("¿Eliminar registro?")) {
+                appData.historialDinamico.splice(index, 1);
+                guardarDatos();
+            }
+        };
+
+        window.abrirAjustes = function() {
+            const cfg = appData.config;
+            document.getElementById('cfg-total-budget').value = cfg.presupuestoBase;
+            document.getElementById('cfg-f1').value = cfg.fijoAlquiler;
+            document.getElementById('cfg-f2').value = cfg.fijoSuministros;
+            document.getElementById('cfg-f3').value = cfg.fijoDespensa;
+            document.getElementById('cfg-f4').value = cfg.fijoSuscrip;
+            document.getElementById('ajustes-modal').style.display = 'flex';
+        };
+
+        window.cerrarAjustes = function() {
+            document.getElementById('ajustes-modal').style.display = 'none';
+        };
+
+        window.guardarAjustes = function() {
+            appData.config.presupuestoBase = parseFloat(document.getElementById('cfg-total-budget').value) || 0;
+            appData.config.fijoAlquiler = parseFloat(document.getElementById('cfg-f1').value) || 0;
+            appData.config.fijoSuministros = parseFloat(document.getElementById('cfg-f2').value) || 0;
+            appData.config.fijoDespensa = parseFloat(document.getElementById('cfg-f3').value) || 0;
+            appData.config.fijoSuscrip = parseFloat(document.getElementById('cfg-f4').value) || 0;
+            cerrarAjustes();
+            guardarDatos();
+        };
+
+        window.exportarDatos = function() {
+            const blob = new Blob([JSON.stringify(appData)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "presupuesto_backup.json";
+            a.click();
+        };
+
+        window.importarDatos = function() {
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = '.json';
+            input.onchange = ev => {
+                const file = ev.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file, 'UTF-8');
+                reader.onload = e => {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        if (parsed.config) { appData = parsed; guardarDatos(); }
+                    } catch(err) { alert("Archivo no válido."); }
+                }
+            };
+            input.click();
+        };
+
+        // --- SISTEMA PWA INSTALABLE NATIVA ---
+        let deferPrompt;
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault(); 
+            deferPrompt = e;
+            document.getElementById('pwa-install-btn').style.display = 'block';
+        });
+        
+        document.getElementById('pwa-install-btn').addEventListener('click', () => {
+            if (deferPrompt) {
+                deferPrompt.prompt();
+                deferPrompt.userChoice.then(res => {
+                    if (res.outcome === 'accepted') {
+                        document.getElementById('pwa-install-btn').style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', cargarPersistencia);
+
+        if ('serviceWorker' in navigator) {
+            const code = `
+                const CACHE_NAME = 'pwa-gastos-v8';
+                self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(['/', '/index.html']))));
+                self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
+            `;
+            const b = new Blob([code], {type: 'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(b)).catch(() => {});
+        }
+    </script>
+</body>
+</html>
